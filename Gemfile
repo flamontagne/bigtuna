@@ -6,6 +6,7 @@ gem "haml"
 gem "delayed_job"
 gem "stringex"
 gem "open4"
+gem "json"
 
 #xmpp notifications
 gem "xmpp4r-simple"
