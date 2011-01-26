@@ -14,8 +14,13 @@ class HooksController < ApplicationController
     payload = JSON.parse(params[:payload])
     branch = payload["ref"].split("/").last
     url = payload["repository"]["url"]
-    source = url.gsub(/^https:\/\//, "git://") + ".git"
-    project = Project.where(:vcs_source => source, :vcs_branch => branch).first
+    public_source = url.gsub(/^https:\/\//, "git://") + ".git"
+    private_source = url.gsub(/^https:\/\//, "git@").
+                         gsub(/github.com\//, "github.com:") + ".git"
+
+    project = Project.where(["(vcs_source = ? or vcs_source = ?) AND (vcs_branch = ?)",
+                              public_source, private_source, branch]).first
+
     if BigTuna.github_secure.nil?
       render :text => "github secure token is not set up", :status => 403
     elsif project and params[:secure] == BigTuna.github_secure
@@ -30,8 +35,9 @@ class HooksController < ApplicationController
     @hook = Hook.where(:project_id => @project.id, :hook_name => params[:name]).first
     return render if request.get?
     @hook.configuration = params["configuration"]
+    @hook.hooks_enabled = (params["hooks_enabled"] || {}).keys
     @hook.save!
-    redirect_to(project_config_hook_path(@project, @hook.backend::NAME))
+    redirect_to(project_config_hook_path(@project, @hook.backend.class::NAME))
   end
 
   private

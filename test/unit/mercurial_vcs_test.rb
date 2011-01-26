@@ -1,11 +1,11 @@
 require 'test_helper'
 
-if BigTuna::VCS::Git.supported?
+if BigTuna::VCS::Mercurial.supported?
 
-class GitVCSTest < ActiveSupport::TestCase
+class MercurialVCSTest < ActiveSupport::TestCase
   def setup
     super
-    `cd test/files; mkdir repo; cd repo; git init; echo "my file" > file; git add file; git commit -m "my file added"`
+    `cd test/files; mkdir repo; cd repo; hg init; echo "my file" > file; hg add file; hg commit -m "my file added"`
   end
 
   def teardown
@@ -32,15 +32,15 @@ class GitVCSTest < ActiveSupport::TestCase
     assert_equal vcs.head_info[0], vcs_clone.head_info[0]
   end
 
-  test "git head_info with other branches than master" do
-    `cd test/files/repo; git checkout -b 'newbranch' 2>&1 > /dev/null; echo "new file" > new_file; git add new_file; git commit -m "new file in branch"; git checkout master 2>&1 > /dev/null`
+  test "hg head_info with other branches than default" do
+    `cd test/files/repo; hg branch 'newbranch' 2>&1 > /dev/null; echo "new file" > new_file; hg add new_file; hg commit -m "new file in branch"; hg update default 2>&1 > /dev/null`
     vcs = init_repo("test/files/repo", "newbranch")
     info, _ = vcs.head_info
     assert_equal "new file in branch", info[:commit_message]
   end
 
-  test "git clone with other branches than master" do
-    `cd test/files/repo; git checkout -b 'newbranch' 2>&1 > /dev/null; echo "new file" > new_file; git add new_file; git commit -m "new file in branch"; git checkout master 2>&1 > /dev/null`
+  test "hg clone with other branches than default" do
+    `cd test/files/repo; hg branch 'newbranch' 2>&1 > /dev/null; echo "new file" > new_file; hg add new_file; hg commit -m "new file in branch"; hg udpate default 2>&1 > /dev/null`
     vcs = init_repo("test/files/repo", "newbranch")
     vcs.clone("test/files/repo_clone")
     info, _ = vcs.head_info
@@ -49,8 +49,8 @@ class GitVCSTest < ActiveSupport::TestCase
   end
 
   private
-  def init_repo(dir = "test/files/repo", branch = "master")
-    BigTuna::VCS::Git.new(dir, branch)
+  def init_repo(dir = "test/files/repo", branch = "default")
+    BigTuna::VCS::Mercurial.new(dir, branch)
   end
 end
 

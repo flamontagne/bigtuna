@@ -6,5 +6,14 @@ module BigTuna::VCS
       @source = source
       @branch = branch
     end
+
+    def self.supported?
+      raise ArgumentError.new("Implement ::supported? method")
+    end
+
+    def self.inherited(klass)
+      BigTuna.vcses << klass
+      BigTuna.logger.info("Registered VCS: %s" % [klass])
+    end
   end
 end

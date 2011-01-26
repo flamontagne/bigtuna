@@ -14,61 +14,82 @@ class HooksTest < ActionController::IntegrationTest
 
   def teardown
     FileUtils.rm_rf("test/files/repo")
-    FileUtils.rm_rf("builds/*")
     super
   end
 
   test "hooks config renders hook config partial if it's present" do
-    project = Project.make(:steps => "ls", :name => "Koss", :vcs_source => "test/files/repo", :vcs_type => "git", :max_builds => 2, :hooks => {"mailer" => "mailer"}, :hook_update => true)
+    project = project_with_steps({
+      :name => "Koss",
+      :vcs_source => "test/files/repo",
+      :max_builds => 2,
+      :hooks => {"mailer" => "mailer"},
+    }, "ls")
     visit edit_project_path(project)
     within("#hook_mailer") do
       click_link "Configure"
     end
     assert page.has_content?("Recipients")
+    assert page.has_field?("Build still fails")
+    assert page.has_xpath?("//*[@name='hooks_enabled[build_still_fails]' and @checked='checked']")
+    uncheck "Build still fails"
+    click_button "Edit"
+    assert ! page.has_xpath?("//*[@name='hooks_enabled[build_still_fails]' and @checked='checked']")
   end
-  
-  test "hooks with no config print out this info to user" do
+
+  test "hooks with no config work as usually" do
     with_hook_enabled(BigTuna::Hooks::NoConfig) do
-      project = Project.make(:steps => "ls", :name => "Koss", :vcs_source => "test/files/repo", :vcs_type => "git", :max_builds => 2, :hooks => {"no_config" => "no_config"}, :hook_update => true)
+      project = project_with_steps({
+        :name => "Koss",
+        :vcs_source => "test/files/repo",
+        :max_builds => 2,
+        :hooks => {"no_config" => "no_config"},
+      }, "ls")
       visit edit_project_path(project)
       within("#hook_no_config") do
         click_link "Configure"
       end
-      assert page.has_content?("This hook doesn't have any configuration.")
+      assert_status_code 200
     end
   end
 
   test "xmpp hook has a valid configuration form" do
-    project = Project.make(
-      :steps => "ls", 
-      :name => "Koss", 
-      :vcs_source => "test/files/repo", 
-      :vcs_type => "git", 
-      :max_builds => 2, 
-      :hooks => {"xmpp" => "xmpp"}, 
-      :hook_update => true
-    )
-    
+    project = project_with_steps({
+      :name => "Koss",
+      :vcs_source => "test/files/repo",
+      :max_builds => 2,
+      :hooks => {"xmpp" => "xmpp"},
+    }, "ls")
+
     visit edit_project_path(project)
     within("#hook_xmpp") do
       click_link "Configure"
     end
     assert page.has_field?("configuration_sender_full_jid")
-    assert page.has_field?("configuration_sender_password")    
-    assert page.has_field?("configuration_recipients")    
+    assert page.has_field?("configuration_sender_password")
+    assert page.has_field?("configuration_recipients")
+    click_button "Edit"
+    assert_status_code 200
   end
 
+  test "irc hook has a valid configuration form" do
+    project = project_with_steps({
+      :name => "Koss",
+      :vcs_source => "test/files/repo",
+      :max_builds => 2,
+      :hooks => {"irc" => "irc"},
+    }, "ls")
 
-  private
-  def with_hook_enabled(hook, &blk)
-    old_hooks = BigTuna::HOOKS.clone
-    Kernel.silence_stream(STDERR) do
-      BigTuna.const_set("HOOKS", old_hooks + [hook])
+    visit edit_project_path(project)
+    within("#hook_irc") do
+      click_link "Configure"
     end
-    blk.call
-  ensure
-    Kernel.silence_stream(STDERR) do
-      BigTuna.const_set("HOOKS", old_hooks)
-    end
+    assert page.has_field?("configuration_user_name")
+    assert page.has_field?("configuration_server")
+    assert page.has_field?("configuration_port")
+    assert page.has_field?("configuration_room")
+    #assert page.has_field?("configuration_room_password")
+
+    click_button "Edit"
+    assert_status_code 200
   end
 end
